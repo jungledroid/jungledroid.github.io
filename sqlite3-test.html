@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8"> 
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script>
+			var _hmt = _hmt || [];
+			(function() {
+			  var hm = document.createElement("script");
+			  hm.src = "//hm.baidu.com/hm.js?7a94f0686d2bc8b893900ad80be20808";
+			  var s = document.getElementsByTagName("script")[0]; 
+			  s.parentNode.insertBefore(hm, s);
+			})();
+		</script>
+
+        <meta name="author" content="Joe Zhang" />
+        <meta name="copyright" content="Joe Zhang" />
+
+<meta name="keywords" content="python, sqlite3, Android, " />
+        <title>Android Sqlite3 数据库调试  · Joe Blog
+</title>
+        <!--<link href="http://cdn-images.mailchimp.com/embedcode/slim-081711.css" rel="stylesheet" type="text/css">-->
+        <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="http://itrecorder.gitcafe.io/theme/css/style.css" media="screen">
+        <link rel="stylesheet" type="text/css" href="http://itrecorder.gitcafe.io/theme/css/solarizedlight.css" media="screen">
+        <!--
+        <link rel="apple-touch-icon" href="http://itrecorder.gitcafe.io/theme/images/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" sizes="57x57" href="http://itrecorder.gitcafe.io/theme/images/apple-touch-icon-57x57.png" />
+        <link rel="apple-touch-icon" sizes="72x72" href="http://itrecorder.gitcafe.io/theme/images/apple-touch-icon-72x72.png" />
+        <link rel="apple-touch-icon" sizes="114x114" href="http://itrecorder.gitcafe.io/theme/images/apple-touch-icon-114x114.png" />
+        <link rel="apple-touch-icon" sizes="144x144" href="http://itrecorder.gitcafe.io/theme/images/apple-touch-icon-144x144.png" />
+        <link rel="icon" href="http://itrecorder.gitcafe.io/theme/images/apple-touch-icon-144x144.png" />-->
+</header>
+    </head>
+    <body>
+		<header id="author_header">
+			<h1><a href="/" id="author_light">徒步的技术博客</a></h1>
+  
+			<h3 id="grey">身体和灵魂，总要有一个在路上</h2>
+		</header>
+        <div id="content-sans-footer">
+			<div class="navbar navbar-static-top">
+				<div class="navbar-inner">
+					<div class="container">
+						<a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+							<span class="icon-bar"></span>
+							<span class="icon-bar"></span>
+							<span class="icon-bar"></span>
+						</a>
+						
+
+						<a class="brand" href="http://itrecorder.gitcafe.io/"><span class=site-name>Joe Blog</span></a>
+						<div class="nav-collapse collapse">
+							<ul class="nav pull-right top-menu">
+								<li ><a href="/">主页</a></li>
+								<li ><a href="http://itrecorder.gitcafe.io/pages/bo-zhu.html">博主</a></li>
+								<li ><a href="http://itrecorder.gitcafe.io/categories.html">文章分类</a></li>
+								<li ><a href="http://itrecorder.gitcafe.io/tags.html">关键字</a></li>
+								<li ><a href="http://itrecorder.gitcafe.io/archives.html">所有文章</a></li>
+								<li><form class="navbar-search" action="http://itrecorder.gitcafe.io/search.html" onsubmit="return validateForm(this.elements['q'].value);"> <input type="text" class="search-query" placeholder="Search" name="q" id="tipue_search_input"></form></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="container-fluid">
+			
+				<div class="row-fluid">
+					<div class="span1"></div>
+					
+					<div class="span10">
+<article>
+<div class="row-fluid">
+    <header class="page_header span10 offset2">
+    <h1><a href="http://itrecorder.gitcafe.io/sqlite3-test.html"> Android Sqlite3 数据库调试  </a></h1>
+    </header>
+</div>
+
+<div class="row-fluid">
+        <div class="span8 offset2 article-content">
+            <h3>前言</h3>
+<p>最近做一个项目，数据逻辑比较复杂， 我建了一些表，然后写了些接口给同事调用， 关于数据逻辑在提供的接口里完成， 实现过程中需要解决这样的问题：</p>
+<ol>
+<li>需要很多情形的数据，数据本身存在逻辑关系。</li>
+<li>Android中没有数据输入， 可以将数据库导入电脑直接操作，由于数据要做些换算，调试一次要换算很久。</li>
+</ol>
+<h3>解决方式</h3>
+<p>1.启用sqlite3日志，老老实实在程序中根据sqlite的日志，调试和生成数据，命令如下：  </p>
+<div class="highlight"><pre> adb shell setprop log.tag.SQLiteLog V   
+ adb shell setprop log.tag.SQLiteStatements V   
+ adb shell stop   
+ adb shell start
+</pre></div>
+
+
+<p>关闭日志只需要把V改成"",就可以了。 （V 表示 VERBOSE，源码中只检查首字符，所以这里可以是Vxxx）。</p>
+<p>另外，如果有root权限想用adb shell直接操作数据库，请<a href="http://blog.csdn.net/myairen1365/article/details/21026767">参考这里</a></p>
+<p>2.可以通过脚本实现，python支持sqlite3，考虑到这里生成的数据需要根据一些条件进行运算和推算，用python脚本的方式比较方便。</p>
+<p>adb pull导入db，然后写好python脚本。python有库直接支持sqlite3,使用起来很简单，下面是个示例:</p>
+<div class="highlight"><pre><span class="kn">import</span> <span class="nn">sqlite3</span>
+<span class="n">con</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s">&quot;C:/Users/dell/Desktop/db/sh-db&quot;</span><span class="p">)</span>
+<span class="n">cur</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+<span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;SELECT * FROM CY&#39;</span><span class="p">)</span>
+<span class="k">print</span> <span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">())</span>
+<span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;delete from CY&#39;</span><span class="p">)</span>
+<span class="n">con</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+
+
+<p>然后需要做得就是写好数据逻辑和日志：</p>
+<div class="highlight"><pre>def generateDatetimeBefore(start,endDelta,cyLength):
+    endDatetime = start - timedelta(days = endDelta)
+    startDatetime =  endDatetime - timedelta(days = cyLength - 1)
+    startMsg = millionsPattern%(realDateTimeStr(startDatetime),dateToMillions(startDatetime))
+    endMsg = millionsPattern%(realDateTimeStr(endDatetime),dateToMillions(endDatetime))
+    print(&quot;| %s | %s | %s | %d | %d |&quot;%(startMsg, endMsg, membershipId, cyLength, peLength))
+    data = [dateToMillions(startDatetime), dateToMillions(endDatetime), id,cyLength,peLength]
+    cur.execute(insertSql,data)
+    con.commit()
+    return startDatetime
+</pre></div>
+
+
+<p>我这里把日志打成markdown格式，方便观察和分析：</p>
+<div class="highlight"><pre>lastCycleStart = dateToday + timedelta(days = 1);
+lastCycleEnd = lastCyStart + timedelta(days=cyleLength-1)
+print(&quot;cyle dateToday:&quot;)
+print(&quot; &quot;,dateToday.strftime(&quot;%Y-%m-%d&quot;))
+print(&quot;============================&quot;)
+print(&quot;| xxx | xxx | xx | xxxx | xxxx|&quot;)
+print(&quot;|-----------|---------|----------|--------------|-------------|&quot;)
+generateCurrentPredict(lastCyStart)
+
+start = generateDatetimeBefore(lastCyStart,1,cyLength)
+start = generateDatetimeBefore(start,1,cyLength)
+start = generateDatetimeBefore(start,1,cyLength)
+start = generateDatetimeBefore(start,1,cyLength)
+
+
+print (cur.fetchall())
+con.close()
+</pre></div>
+
+
+<p>这样根据特定逻辑生成了我想要的数据，下一步使用adb push 推入虚拟机就可以进行验证。
+  文章很简单，紧紧是一个思路，对于比较直观的数据直接使用方式一，然后通过Root Explore查看数据即可。用脚本语言来实现，往往可以节约大量的时间，而且准确率也会有所提高。</p>
+           
+            <aside>
+            <hr/>
+            <nav>
+            <ul class="articles_timeline">
+            </ul>
+            </nav>
+            </aside>
+			
+        </div>
+		 
+        <section>
+        <div class="span2" style="float:right;font-size:0.9em;">
+ 
+            <h4>Published</h4>
+            <time pubdate="pubdate" datetime="2015-09-17T23:00:00+08:00"> 9月 17, 2015</time>
+ 
+            <h4>Last Updated</h4>
+            <div class="last_updated">2015-09-17 23:30:00+08:00</div>
+            <h4>Category</h4>
+            <a class="category-link" href="/categories.html#Android-ref">Android</a> 
+            <h4>Tags</h4>
+            <ul class="list-of-tags tags-in-article"> 
+                <li><a href="/tags.html#python-ref">python
+                    <span>1</span>
+</a></li>
+                <li><a href="/tags.html#sqlite3-ref">sqlite3
+                    <span>1</span>
+</a></li>
+            </ul>
+
+        </div>
+        </section>
+		
+</div>
+<!---->
+  <div>
+  <section>
+    <h1>Comments</h1>
+    <div id="DuoShuoComment" aria-live="polite">
+<!-- Duoshuo Comment BEGIN -->
+<div class="ds-thread"></div>
+<script type="text/javascript">
+var duoshuoQuery = {short_name:"itrecorder-gitcafe"};
+(function() {
+    var ds = document.createElement('script');
+    ds.type = 'text/javascript';
+    ds.async = true;
+    ds.src = 'http://static.duoshuo.com/embed.js';
+    ds.charset = 'UTF-8';
+    (document.getElementsByTagName('head')[0]
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+})();
+</script>
+<!-- Duoshuo Comment END -->
+<noscript>
+Please enable JavaScript to view the comments powered by <a href="http://duoshuo.com/">DuoShuo</a>.
+</noscript>    </div>
+  </section>
+  <div>
+</article>
+					</div>
+				</div>
+			</div>
+		</div>
+<footer>
+<div id="footer">
+    <ul class="footer-content">
+        <li class="elegant-power">Powered by <a href="http://getpelican.com/" title="Pelican Home Page">Pelican</a>. Theme: <a href="http://oncrashreboot.com/pelican-elegant" title="Theme Elegant Home Page">Elegant</a> by <a href="http://oncrashreboot.com" title="Talha Mansoor Home Page">Talha Mansoor</a></li>
+    </ul>
+</div>
+</footer>            <script src="http://code.jquery.com/jquery.min.js"></script>
+        <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
+        <script>
+            function validateForm(query)
+            {
+                return (query.length > 0);
+            }
+        </script>
+
+    </body>
+</html>
