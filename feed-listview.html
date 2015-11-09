@@ -16,8 +16,8 @@
         <meta name="author" content="Joe Zhang" />
         <meta name="copyright" content="Joe Zhang" />
 
-<meta name="keywords" content="python, sqlite3, Android, " />
-        <title>Android Sqlite3 数据库调试  · Jungledroid
+<meta name="keywords" content="feed, listview, Android, " />
+        <title>Android卡片新闻页优化实践  · Jungledroid
 </title>
         <!--<link href="http://cdn-images.mailchimp.com/embedcode/slim-081711.css" rel="stylesheet" type="text/css">-->
         <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet">
@@ -72,85 +72,157 @@
 <article>
 <div class="row-fluid">
     <header class="page_header span10 offset2">
-    <h1><a href="http://jungledroid.gitcafe.io/sqlite3-test.html"> Android Sqlite3 数据库调试  </a></h1>
+    <h1><a href="http://jungledroid.gitcafe.io/feed-listview.html"> Android卡片新闻页优化实践  </a></h1>
     </header>
 </div>
 
 <div class="row-fluid">
         <div class="span8 offset2 article-content">
-            <h3>前言</h3>
-<p>最近做一个项目，数据逻辑比较复杂， 我建了一些表，然后写了些接口给同事调用， 关于数据逻辑在提供的接口里完成， 实现过程中需要解决这样的问题：</p>
+            <p>以前的项目有展示Feed的需求，服务器端返回列表，有各种类型的Feed, 客户端根据返回的feed类型进行展示。</p>
+<h4>常用的实现方法</h4>
+<h6>MVP的方式</h6>
 <ol>
-<li>需要很多情形的数据，数据本身存在逻辑关系。</li>
-<li>Android中没有数据输入， 可以将数据库导入电脑直接操作，由于数据要做些换算，调试一次要换算很久。</li>
+<li><strong>Model</strong>
+   定义抽象Card，为每种Card定义一个Model，</li>
+<li><strong>Presenter</strong>
+    定义基类CardPresenter,为每个Card定义一个Presenter，方法binderView(View convertView,ViewGroup parent)主要用于ListView 的getView调用，让数据和View绑定到一起。</li>
+<li>
+<p><strong>View</strong>
+   ListView,每一个Presenter代表一个item.
+调用步骤：</p>
+<p><code>ListView(Adapter getView)
+-&gt;CardPresenter(binderView())
+-&gt; View设置</code></p>
+</li>
 </ol>
-<h3>解决方式</h3>
-<p>1.启用sqlite3日志，老老实实在程序中根据sqlite的日志，调试和生成数据，命令如下：  </p>
-<div class="highlight"><pre> adb shell setprop log.tag.SQLiteLog V   
- adb shell setprop log.tag.SQLiteStatements V   
- adb shell stop   
- adb shell start
+<h6>问题：</h6>
+<ul>
+<li>加载比较慢,listview view 重用效率不高,Card较大时会出现卡顿</li>
+<li>很多时候局部卡片要进行刷新不够流畅</li>
+<li>某个卡片局部的显示和隐藏操作，会出现卡顿</li>
+</ul>
+<p>最近又遇到相似的需求，于是决定使用不同的方式进行优化。google找到这篇博客https://code.facebook.com/posts/879498888759525/fast-rendering-news-feed-on-android/ 总结起来一句话：将逻辑单元拆分成多个视图单元。按这种思路重新实现了下，效果还不错。</p>
+<h3>实现思路</h3>
+<h6>Model</h6>
+<p>先定义一个接口Card代表所有的Card类型</p>
+<div class="highlight"><pre>    public interface Card {
+        String getType();
+    }
 </pre></div>
 
 
-<p>关闭日志只需要把V改成"",就可以了。 （V 表示 VERBOSE，源码中只检查首字符，所以这里可以是Vxxx）。</p>
-<p>另外，如果有root权限想用adb shell直接操作数据库，请<a href="http://blog.csdn.net/myairen1365/article/details/21026767">参考这里</a></p>
-<p>2.可以通过脚本实现，python支持sqlite3，考虑到这里生成的数据需要根据一些条件进行运算和推算，用python脚本的方式比较方便。</p>
-<p>adb pull导入db，然后写好python脚本。python有库直接支持sqlite3,使用起来很简单，下面是个示例:</p>
-<div class="highlight"><pre><span class="kn">import</span> <span class="nn">sqlite3</span>
-<span class="n">con</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s">&quot;C:/Users/dell/Desktop/db/sh-db&quot;</span><span class="p">)</span>
-<span class="n">cur</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
-<span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;SELECT * FROM CY&#39;</span><span class="p">)</span>
-<span class="k">print</span> <span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">())</span>
-<span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;delete from CY&#39;</span><span class="p">)</span>
-<span class="n">con</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<p>定义具体的<strong>card</strong>实体：</p>
+<div class="highlight"><pre>    public class ArticleCard implements Card{
+        // ...
+
+         public static String getTypeCode(){
+            return &quot;article&quot;;
+        }
+        // ...
+    }
 </pre></div>
 
 
-<p>然后需要做得就是写好数据逻辑和日志：</p>
-<div class="highlight"><pre>def generateDatetimeBefore(start,endDelta,cyLength):
-    endDatetime = start - timedelta(days = endDelta)
-    startDatetime =  endDatetime - timedelta(days = cyLength - 1)
-    startMsg = millionsPattern%(realDateTimeStr(startDatetime),dateToMillions(startDatetime))
-    endMsg = millionsPattern%(realDateTimeStr(endDatetime),dateToMillions(endDatetime))
-    print(&quot;| %s | %s | %s | %d | %d |&quot;%(startMsg, endMsg, membershipId, cyLength, peLength))
-    data = [dateToMillions(startDatetime), dateToMillions(endDatetime), id,cyLength,peLength]
-    cur.execute(insertSql,data)
-    con.commit()
-    return startDatetime
+<h6>Presenter</h6>
+<p>这里由<strong>FeedBinder</strong>来担任这个角色.
+<strong>FeedPartDefine</strong>代表一个Item视图单位：</p>
+<div class="highlight"><pre>public interface FeedPartDefine {
+    FeedBinder createBinder(Card card, FeedUpdateListener feedListener);
+}
 </pre></div>
 
 
-<p>我这里把日志打成markdown格式，方便观察和分析：</p>
-<div class="highlight"><pre>lastCycleStart = dateToday + timedelta(days = 1);
-lastCycleEnd = lastCyStart + timedelta(days=cyleLength-1)
-print(&quot;cyle dateToday:&quot;)
-print(&quot; &quot;,dateToday.strftime(&quot;%Y-%m-%d&quot;))
-print(&quot;============================&quot;)
-print(&quot;| xxx | xxx | xx | xxxx | xxxx|&quot;)
-print(&quot;|-----------|---------|----------|--------------|-------------|&quot;)
-generateCurrentPredict(lastCyStart)
+<p>每个不可拆分的FeedPartDefine内部定义了自己的binder,最终效果多个真正的Item,看起来属于一个Card, ListView的分割线我们定义成一个FeedPartDefine以方便控制，下面给出了一个代码：</p>
+<div class="highlight"><pre>public class FeedGapSingleDefine implements FeedPartDefine {
+    @Override
+    public FeedBinder createBinder(Card card, FeedUpdateListener feedUpdateListener) {
+        return new FeedGapBinder();
+    }
 
-start = generateDatetimeBefore(lastCyStart,1,cyLength)
-start = generateDatetimeBefore(start,1,cyLength)
-start = generateDatetimeBefore(start,1,cyLength)
-start = generateDatetimeBefore(start,1,cyLength)
+    private static final class FeedGapBinder implements FeedBinder{
+        @Override
+        public void prepare() {}
 
+        @Override
+        public View bind(View convertView, ViewGroup parent) {
+            int key = getViewResourceId();
+            if(convertView == null){
+                convertView = LayoutInflater.from(parent.getContext()).inflate(key,parent,false);
+            }
+            return convertView;
+        }
 
-print (cur.fetchall())
-con.close()
+        @Override
+        public void unbind() {}
+
+        @Override
+        public int getViewResourceId() {
+            return R.layout.feed_gap;
+        }
+
+        @Override
+        public View getView(int position,View convertView,ViewGroup parent) {
+            return mFeedBinders.get(position).bind(convertView, parent);
+        }
+        @Override
+        public int getViewType() {
+            return 1;
+        }
+        // ...
+    }
+}
 </pre></div>
 
 
-<p>这样根据特定逻辑生成了我想要的数据，下一步使用adb push 推入虚拟机就可以进行验证。
-  文章很简单，紧紧是一个思路，对于比较直观的数据直接使用方式一，然后通过Root Explore查看数据即可。用脚本语言来实现，往往可以节约大量的时间，而且准确率也会有所提高。</p>
+<p>parepare方法可以在解析完后做一些如String,span的初始化工作，unbind可以做一些释放和处理。
+最终Adapter中getView:</p>
+<div class="highlight"><pre>     @Override
+    public View getView(int position,View convertView,ViewGroup parent) {
+        return mFeedBinders.get(position).bind(convertView, parent);
+    }
+</pre></div>
+
+
+<p>另外， 常常一些Card需要展开和收起，听人说可以动态改变ListView的getCount大小，试了下效果不好，因为每次查找都需要循环计算需要跳过的Item数目，可以在Binder中持有一个隐藏的Binder,展开或收起去回调Adapter:</p>
+<div class="highlight"><pre>    @Override
+    public void onChoiceChange(int checkPosition) {
+        mIsExpand = !mIsExpand;
+        if(mIsExpand){
+              mOnPollExpandListener.expandBinder(this, mResultBinder);
+        }else{
+            mOnPollExpandListener.collapseBinder(mResultBinder);
+        }
+    }
+</pre></div>
+
+
+<p>Adapter需要做的只是移除和添加该Binder:</p>
+<div class="highlight"><pre>@Override
+public void expandBinder(FeedBinder choiceBinder, FeedBinder resultBinder) {
+    mFeedBinders.add(mFeedBinders.indexOf(choiceBinder) + 1, resultBinder);
+    notifyDataSetChanged();
+}
+
+@Override
+public void collapseBinder(FeedBinder resultBinder) {
+    int removeIndex = mFeedBinders.indexOf(resultBinder);
+    if(removeIndex != -1) {
+        mFeedBinders.remove(removeIndex);
+        mFeedBinders.get(removeIndex - 1).onRelativeBinderCollapse();
+        notifyDataSetChanged();
+    }
+}
+</pre></div>
+
+
+<p>总的来说效果还不错，比前面的方式流畅很多。代码地址https://github.com/jungledroid/feedlist， 如果你有别的思路  ，欢迎交流学习，本人邮箱fengyutubu@foxmail.com</p>
            
             <aside>
             <hr/>
             <nav>
             <ul class="articles_timeline">
  
-                <li class="next_article"><a href="http://jungledroid.gitcafe.io/feed-listview.html" title="Next: Android卡片新闻页优化实践">Android卡片新闻页优化实践</a> »</li>
+                <li class="previous_article">« <a href="http://jungledroid.gitcafe.io/sqlite3-test.html" title="Previous: Android Sqlite3 数据库调试">Android Sqlite3 数据库调试</a></li>
             </ul>
             </nav>
             </aside>
@@ -161,18 +233,18 @@ con.close()
         <div class="span2" style="float:right;font-size:0.9em;">
  
             <h4>Published</h4>
-            <time pubdate="pubdate" datetime="2015-09-17T23:00:00+08:00"> 9月 17, 2015</time>
+            <time pubdate="pubdate" datetime="2015-11-08T23:00:00+08:00">11月 8, 2015</time>
  
             <h4>Last Updated</h4>
-            <div class="last_updated">2015-09-17 23:30:00+08:00</div>
+            <div class="last_updated">2015-11-08 23:00:00+08:00</div>
             <h4>Category</h4>
             <a class="category-link" href="/categories.html#Android-ref">Android</a> 
             <h4>Tags</h4>
             <ul class="list-of-tags tags-in-article"> 
-                <li><a href="/tags.html#python-ref">python
+                <li><a href="/tags.html#feed-ref">feed
                     <span>1</span>
 </a></li>
-                <li><a href="/tags.html#sqlite3-ref">sqlite3
+                <li><a href="/tags.html#listview-ref">listview
                     <span>1</span>
 </a></li>
             </ul>
