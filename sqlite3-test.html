@@ -1,84 +1,69 @@
 <!DOCTYPE html>
-<html lang="en-US">
-    <head>
-        <meta charset="utf-8"> 
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<script>
-			var _hmt = _hmt || [];
-			(function() {
-			  var hm = document.createElement("script");
-			  hm.src = "//hm.baidu.com/hm.js?7a94f0686d2bc8b893900ad80be20808";
-			  var s = document.getElementsByTagName("script")[0]; 
-			  s.parentNode.insertBefore(hm, s);
-			})();
-		</script>
+<html lang="zh_cn">
+<head>
 
-        <meta name="author" content="Joe Zhang" />
-        <meta name="copyright" content="Joe Zhang" />
+        <title>Android Sqlite3 数据库调试</title>
+        <meta charset="utf-8" />
 
-<meta name="keywords" content="python, sqlite3, Android, " />
-        <title>Android Sqlite3 数据库调试  · Jungledroid
-</title>
-        <!--<link href="http://cdn-images.mailchimp.com/embedcode/slim-081711.css" rel="stylesheet" type="text/css">-->
-        <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet">
-        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/css/style.css" media="screen">
-        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/css/solarizedlight.css" media="screen">
-        <!--
-        <link rel="apple-touch-icon" href="http://jungledroid.gitcafe.io/theme/images/apple-touch-icon.png" />
-        <link rel="apple-touch-icon" sizes="57x57" href="http://jungledroid.gitcafe.io/theme/images/apple-touch-icon-57x57.png" />
-        <link rel="apple-touch-icon" sizes="72x72" href="http://jungledroid.gitcafe.io/theme/images/apple-touch-icon-72x72.png" />
-        <link rel="apple-touch-icon" sizes="114x114" href="http://jungledroid.gitcafe.io/theme/images/apple-touch-icon-114x114.png" />
-        <link rel="apple-touch-icon" sizes="144x144" href="http://jungledroid.gitcafe.io/theme/images/apple-touch-icon-144x144.png" />
-        <link rel="icon" href="http://jungledroid.gitcafe.io/theme/images/apple-touch-icon-144x144.png" />-->
-</header>
-    </head>
-    <body>
-		<header id="author_header">
-			<h1><a href="/" id="author_light">徒步的技术博客</a></h1>
-  
-			<h3 id="grey">身体和灵魂，总要有一个在路上</h2>
-		</header>
-        <div id="content-sans-footer">
-			<div class="navbar navbar-static-top">
-				<div class="navbar-inner">
-					<div class="container">
-						<a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-							<span class="icon-bar"></span>
-							<span class="icon-bar"></span>
-							<span class="icon-bar"></span>
-						</a>
-						
 
-						<a class="brand" href="http://jungledroid.gitcafe.io/"><span class=site-name>Jungledroid</span></a>
-						<div class="nav-collapse collapse">
-							<ul class="nav pull-right top-menu">
-								<li ><a href="/">主页</a></li>
-								<li ><a href="http://jungledroid.gitcafe.io/pages/guan-yu.html">关于</a></li>
-								<li ><a href="http://jungledroid.gitcafe.io/categories.html">文章分类</a></li>
-								<li ><a href="http://jungledroid.gitcafe.io/tags.html">关键字</a></li>
-								<li ><a href="http://jungledroid.gitcafe.io/archives.html">所有文章</a></li>
-								<li><form class="navbar-search" action="http://jungledroid.gitcafe.io/search.html" onsubmit="return validateForm(this.elements['q'].value);"> <input type="text" class="search-query" placeholder="Search" name="q" id="tipue_search_input"></form></li>
-							</ul>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="container-fluid">
-			
-				<div class="row-fluid">
-					<div class="span1"></div>
-					
-					<div class="span10">
-<article>
-<div class="row-fluid">
-    <header class="page_header span10 offset2">
-    <h1><a href="http://jungledroid.gitcafe.io/sqlite3-test.html"> Android Sqlite3 数据库调试  </a></h1>
-    </header>
-</div>
+        <!-- Mobile viewport optimized: j.mp/bplateviewport -->
+        <meta name="viewport" content="width=device-width,initial-scale=1, maximum-scale=1">
 
-<div class="row-fluid">
-        <div class="span8 offset2 article-content">
-            <h3>前言</h3>
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/gumby.css" />
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/style.css" />
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/pygment.css" />
+
+        <script src="http://jungledroid.gitcafe.io/theme/js/libs/modernizr-2.6.2.min.js"></script>
+
+
+
+
+</head>
+
+<body id="index" class="home">
+
+
+    <div class="container">
+
+        <div class="row">
+
+          <header id="banner" class="body">
+                  <h1><a href="http://jungledroid.gitcafe.io/">Jungledroid <strong></strong></a></h1>
+          </header><!-- /#banner -->
+
+            <div id="navigation" class="navbar row">
+              <a href="#" gumby-trigger="#navigation &gt; ul" class="toggle"><i class="icon-menu"></i></a>
+             
+              <ul class="columns">
+                <li><a href="http://jungledroid.gitcafe.io/">Home</a></li>
+
+                <li><a href="http://jungledroid.gitcafe.io/pages/guan-yu.html">关于</a></li>
+
+              </ul>
+            </div>
+
+<section id="content" class="body">
+
+   <div class="row">
+        <div class="eleven columns">
+
+
+            <header>
+              <h2 class="entry-title">
+                <a href="http://jungledroid.gitcafe.io/sqlite3-test.html" rel="bookmark"
+                   title="Permalink to Android Sqlite3 数据库调试">Android Sqlite3 数据库调试</a></h2>
+           
+            </header>
+            <footer class="post-info">
+              <abbr class="published" title="2015-09-17T23:00:00+08:00">
+                2015-09-17 23:00:00
+              </abbr>
+              <address class="vcard author">By 
+                <a class="url fn" href="http://jungledroid.gitcafe.io/author/joe-zhang.html"> Joe Zhang</a>
+              </address>
+            </footer><!-- /.post-info -->
+            <div class="entry-content">
+              <h3>前言</h3>
 <p>最近做一个项目，数据逻辑比较复杂， 我建了一些表，然后写了些接口给同事调用， 关于数据逻辑在提供的接口里完成， 实现过程中需要解决这样的问题：</p>
 <ol>
 <li>需要很多情形的数据，数据本身存在逻辑关系。</li>
@@ -144,87 +129,80 @@ con.close()
 
 <p>这样根据特定逻辑生成了我想要的数据，下一步使用adb push 推入虚拟机就可以进行验证。
   文章很简单，紧紧是一个思路，对于比较直观的数据直接使用方式一，然后通过Root Explore查看数据即可。用脚本语言来实现，往往可以节约大量的时间，而且准确率也会有所提高。</p>
-           
-            <aside>
-            <hr/>
-            <nav>
-            <ul class="articles_timeline">
- 
-                <li class="next_article"><a href="http://jungledroid.gitcafe.io/feed-listview.html" title="Next: Android卡片新闻页优化实践">Android卡片新闻页优化实践</a> »</li>
-            </ul>
-            </nav>
-            </aside>
-			
-        </div>
-		 
-        <section>
-        <div class="span2" style="float:right;font-size:0.9em;">
- 
-            <h4>Published</h4>
-            <time pubdate="pubdate" datetime="2015-09-17T23:00:00+08:00"> 9月 17, 2015</time>
- 
-            <h4>Last Updated</h4>
-            <div class="last_updated">2015-09-17 23:30:00+08:00</div>
-            <h4>Category</h4>
-            <a class="category-link" href="/categories.html#Android-ref">Android</a> 
-            <h4>Tags</h4>
-            <ul class="list-of-tags tags-in-article"> 
-                <li><a href="/tags.html#python-ref">python
-                    <span>1</span>
-</a></li>
-                <li><a href="/tags.html#sqlite3-ref">sqlite3
-                    <span>1</span>
-</a></li>
-            </ul>
+            </div><!-- /.entry-content -->
 
-        </div>
-        </section>
-		
-</div>
-<!---->
-  <div>
-  <section>
-    <h1>Comments</h1>
-    <div id="DuoShuoComment" aria-live="polite">
-<!-- Duoshuo Comment BEGIN -->
-<div class="ds-thread"></div>
-<script type="text/javascript">
-var duoshuoQuery = {short_name:"itrecorder-gitcafe"};
-(function() {
-    var ds = document.createElement('script');
-    ds.type = 'text/javascript';
-    ds.async = true;
-    ds.src = 'http://static.duoshuo.com/embed.js';
-    ds.charset = 'UTF-8';
-    (document.getElementsByTagName('head')[0]
-        || document.getElementsByTagName('body')[0]).appendChild(ds);
-})();
-</script>
-<!-- Duoshuo Comment END -->
-<noscript>
-Please enable JavaScript to view the comments powered by <a href="http://duoshuo.com/">DuoShuo</a>.
-</noscript>    </div>
-  </section>
-  <div>
-</article>
-					</div>
-				</div>
-			</div>
-		</div>
-<footer>
-<div id="footer">
-    <ul class="footer-content">
-        <li class="elegant-power">Powered by <a href="http://getpelican.com/" title="Pelican Home Page">Pelican</a>. Theme: <a href="http://oncrashreboot.com/pelican-elegant" title="Theme Elegant Home Page">Elegant</a> by <a href="http://oncrashreboot.com" title="Talha Mansoor Home Page">Talha Mansoor</a></li>
-    </ul>
-</div>
-</footer>            <script src="http://code.jquery.com/jquery.min.js"></script>
-        <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
-        <script>
-            function validateForm(query)
-            {
-                return (query.length > 0);
-            }
-        </script>
 
-    </body>
+        </div><!-- /.eleven.columns -->
+
+<div class="three columns">
+
+<h4>Pages</h4>
+
+ <ul>
+      <li><a href="http://jungledroid.gitcafe.io/pages/guan-yu.html">关于</a></li>
+  </ul>
+
+<h4>Categories</h4>
+<ul class="blank">
+		<li><a href="http://jungledroid.gitcafe.io/category/android.html">Android</a></li>
+</ul>
+
+
+<h4>Tags</h4>
+	<ul class="blank">
+</ul>
+
+
+<nav class="widget">
+  <h4>Social</h4>
+  <ul class="blank">
+    <li><a href="#">You can add links in your config file</a></li>
+    <li><a href="#">Another social link</a></li>
+  </ul>
+</nav>
+
+</div> </div><!-- /.row -->
+
+
+</section>
+
+       </div><!-- /.row -->
+    </div><!-- /.container -->
+
+
+       <div class="container.nopad bg">
+
+    
+        <footer id="credits" class="row">
+          <div class="seven columns left-center">
+
+                   <address id="about" class="vcard body">
+                    Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                    which takes great advantage of <a href="http://python.org">Python</a>.
+                    <br />
+                    Based on the <a target="_blank" href="http://gumbyframework.com">Gumby Framework</a>
+                    </address>
+          </div>
+
+
+          <div class="seven columns">
+            <div class="row">
+              <ul class="socbtns">
+
+
+
+
+
+              </ul>
+            </div>
+          </div>
+        </footer>
+
+    </div>
+
+
+  <script src="http://jungledroid.gitcafe.io/theme/js/libs/jquery-1.9.1.min.js"></script>
+  <script src="http://jungledroid.gitcafe.io/theme/js/libs/gumby.min.js"></script>
+  <script src="http://jungledroid.gitcafe.io/theme/js/plugins.js"></script>
+</body>
 </html>
