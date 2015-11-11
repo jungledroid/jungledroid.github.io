@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh_cn">
+<head>
+
+        <title>Android卡片新闻页优化实践</title>
+        <meta charset="utf-8" />
+
+
+        <!-- Mobile viewport optimized: j.mp/bplateviewport -->
+        <meta name="viewport" content="width=device-width,initial-scale=1, maximum-scale=1">
+
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/gumby.css" />
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/style.css" />
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/pygment.css" />
+
+        <script src="http://jungledroid.gitcafe.io/theme/js/libs/modernizr-2.6.2.min.js"></script>
+
+
+
+
+</head>
+
+<body id="index" class="home">
+
+
+    <div class="container">
+
+        <div class="row">
+
+          <header id="banner" class="body">
+                  <h1><a href="http://jungledroid.gitcafe.io/">Jungledroid <strong></strong></a></h1>
+          </header><!-- /#banner -->
+
+            <div id="navigation" class="navbar row">
+              <a href="#" gumby-trigger="#navigation &gt; ul" class="toggle"><i class="icon-menu"></i></a>
+             
+              <ul class="columns">
+                <li><a href="http://jungledroid.gitcafe.io/">Home</a></li>
+
+                <li><a href="http://jungledroid.gitcafe.io/pages/guan-yu.html">关于</a></li>
+
+              </ul>
+            </div>
+
+<section id="content" class="body">
+
+   <div class="row">
+        <div class="eleven columns">
+
+
+            <header>
+              <h2 class="entry-title">
+                <a href="http://jungledroid.gitcafe.io/feed-listview.html" rel="bookmark"
+                   title="Permalink to Android卡片新闻页优化实践">Android卡片新闻页优化实践</a></h2>
+           
+            </header>
+            <footer class="post-info">
+              <abbr class="published" title="2015-11-08T23:00:00+08:00">
+                2015-11-08 23:00:00
+              </abbr>
+              <address class="vcard author">By 
+                <a class="url fn" href="http://jungledroid.gitcafe.io/author/joe-zhang.html"> Joe Zhang</a>
+              </address>
+            </footer><!-- /.post-info -->
+            <div class="entry-content">
+              <p>以前的项目有展示Feed的需求，服务器端返回列表，有各种类型的Feed, 客户端根据返回的feed类型进行展示。</p>
+<h4>常用的实现方法</h4>
+<h6>MVP的方式</h6>
+<ol>
+<li><strong>Model</strong>
+   定义抽象Card，为每种Card定义一个Model，</li>
+<li><strong>Presenter</strong>
+    定义基类CardPresenter,为每个Card定义一个Presenter，方法binderView(View convertView,ViewGroup parent)主要用于ListView 的getView调用，让数据和View绑定到一起。</li>
+<li>
+<p><strong>View</strong>
+   ListView,每一个Presenter代表一个item.
+调用步骤：</p>
+<p><code>ListView(Adapter getView)
+-&gt;CardPresenter(binderView())
+-&gt; View设置</code></p>
+</li>
+</ol>
+<h6>问题：</h6>
+<ul>
+<li>加载比较慢,listview view 重用效率不高,Card较大时会出现卡顿</li>
+<li>很多时候局部卡片要进行刷新不够流畅</li>
+<li>某个卡片局部的显示和隐藏操作，会出现卡顿</li>
+</ul>
+<p>最近又遇到相似的需求，于是决定使用不同的方式进行优化。google找到这篇博客https://code.facebook.com/posts/879498888759525/fast-rendering-news-feed-on-android/ 总结起来一句话：将逻辑单元拆分成多个视图单元。按这种思路重新实现了下，先上效果</p>
+<p><img alt="feedlist" src="http://7xo8z5.com1.z0.glb.clouddn.com/feedlist.gif" /></p>
+<h3>实现思路</h3>
+<h6>Model</h6>
+<p>先定义一个接口Card代表所有的Card类型</p>
+<div class="highlight"><pre>    public interface Card {
+        String getType();
+    }
+</pre></div>
+
+
+<p>定义具体的<strong>card</strong>实体：</p>
+<div class="highlight"><pre>    public class ArticleCard implements Card{
+        // ...
+
+         public static String getTypeCode(){
+            return &quot;article&quot;;
+        }
+        // ...
+    }
+</pre></div>
+
+
+<h6>Presenter</h6>
+<p>这里由<strong>FeedBinder</strong>来担任这个角色.
+<strong>FeedPartDefine</strong>代表一个Item视图单位：</p>
+<div class="highlight"><pre>public interface FeedPartDefine {
+    FeedBinder createBinder(Card card, FeedUpdateListener feedListener);
+}
+</pre></div>
+
+
+<p>每个不可拆分的FeedPartDefine内部定义了自己的binder,最终效果多个真正的Item,看起来属于一个Card, ListView的分割线我们定义成一个FeedPartDefine以方便控制，下面给出了一个代码：</p>
+<div class="highlight"><pre>public class FeedGapSingleDefine implements FeedPartDefine {
+    @Override
+    public FeedBinder createBinder(Card card, FeedUpdateListener feedUpdateListener) {
+        return new FeedGapBinder();
+    }
+
+    private static final class FeedGapBinder implements FeedBinder{
+        @Override
+        public void prepare() {}
+
+        @Override
+        public View bind(View convertView, ViewGroup parent) {
+            int key = getViewResourceId();
+            if(convertView == null){
+                convertView = LayoutInflater.from(parent.getContext()).inflate(key,parent,false);
+            }
+            return convertView;
+        }
+
+        @Override
+        public void unbind() {}
+
+        @Override
+        public int getViewResourceId() {
+            return R.layout.feed_gap;
+        }
+
+        @Override
+        public View getView(int position,View convertView,ViewGroup parent) {
+            return mFeedBinders.get(position).bind(convertView, parent);
+        }
+        @Override
+        public int getViewType() {
+            return 1;
+        }
+        // ...
+    }
+}
+</pre></div>
+
+
+<p>parepare方法可以在解析完后做一些如String,span的初始化工作，unbind可以做一些释放和处理。
+最终Adapter中getView:</p>
+<div class="highlight"><pre>     @Override
+    public View getView(int position,View convertView,ViewGroup parent) {
+        return mFeedBinders.get(position).bind(convertView, parent);
+    }
+</pre></div>
+
+
+<p>另外， 常常一些Card需要展开和收起，听人说可以动态改变ListView的getCount大小，试了下效果不好，因为每次查找都需要循环计算需要跳过的Item数目，可以在Binder中持有一个隐藏的Binder,展开或收起去回调Adapter:</p>
+<div class="highlight"><pre>    @Override
+    public void onChoiceChange(int checkPosition) {
+        mIsExpand = !mIsExpand;
+        if(mIsExpand){
+              mOnPollExpandListener.expandBinder(this, mResultBinder);
+        }else{
+            mOnPollExpandListener.collapseBinder(mResultBinder);
+        }
+    }
+</pre></div>
+
+
+<p>Adapter需要做的只是移除和添加该Binder:</p>
+<div class="highlight"><pre>@Override
+public void expandBinder(FeedBinder choiceBinder, FeedBinder resultBinder) {
+    mFeedBinders.add(mFeedBinders.indexOf(choiceBinder) + 1, resultBinder);
+    notifyDataSetChanged();
+}
+
+@Override
+public void collapseBinder(FeedBinder resultBinder) {
+    int removeIndex = mFeedBinders.indexOf(resultBinder);
+    if(removeIndex != -1) {
+        mFeedBinders.remove(removeIndex);
+        mFeedBinders.get(removeIndex - 1).onRelativeBinderCollapse();
+        notifyDataSetChanged();
+    }
+}
+</pre></div>
+
+
+<p>总的来说效果还不错，比前面的方式流畅很多。代码地址https://github.com/jungledroid/feedlist， 如果你有别的思路  ，欢迎交流学习，本人邮箱fengyutubu@foxmail.com</p>
+            </div><!-- /.entry-content -->
+            <div class="comments">
+              <h3>Comments</h3>
+             <!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="feed-listview" data-title="Android卡片新闻页优化实践" data-url="http://jungledroid.gitcafe.io/feed-listview.html"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+var duoshuoQuery = {short_name:"jungle"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+<!-- 多说公共JS代码 end -->
+
+            </div>
+
+
+        </div><!-- /.eleven.columns -->
+
+<div class="three columns">
+
+<h4>Pages</h4>
+
+ <ul>
+      <li><a href="http://jungledroid.gitcafe.io/pages/guan-yu.html">关于</a></li>
+  </ul>
+
+<h4>Categories</h4>
+<ul class="blank">
+		<li><a href="http://jungledroid.gitcafe.io/category/android.html">Android</a></li>
+</ul>
+
+
+<h4>Tags</h4>
+	<ul class="blank">
+</ul>
+
+
+<nav class="widget">
+  <h4>Social</h4>
+  <ul class="blank">
+    <li><a href="https://github.com/jungledroid">Github</a></li>
+    <li><a href="http://weibo.com/u/5741921914">新浪微博</a></li>
+  </ul>
+</nav>
+
+</div> </div><!-- /.row -->
+
+
+</section>
+
+       </div><!-- /.row -->
+    </div><!-- /.container -->
+
+
+       <div class="container.nopad bg">
+
+    
+        <footer id="credits" class="row">
+          <div class="seven columns left-center">
+
+                   <address id="about" class="vcard body">
+                    Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                    which takes great advantage of <a href="http://python.org">Python</a>.
+                    <br />
+                    Based on the <a target="_blank" href="http://gumbyframework.com">Gumby Framework</a>
+                    </address>
+          </div>
+
+
+          <div class="seven columns">
+            <div class="row">
+              <ul class="socbtns">
+
+
+
+
+
+              </ul>
+            </div>
+          </div>
+        </footer>
+
+    </div>
+
+
+  <script src="http://jungledroid.gitcafe.io/theme/js/libs/jquery-1.9.1.min.js"></script>
+  <script src="http://jungledroid.gitcafe.io/theme/js/libs/gumby.min.js"></script>
+  <script src="http://jungledroid.gitcafe.io/theme/js/plugins.js"></script>
+</body>
+</html>

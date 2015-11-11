@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh_cn">
+<head>
+
+        <title>Android Sqlite3 数据库调试</title>
+        <meta charset="utf-8" />
+
+
+        <!-- Mobile viewport optimized: j.mp/bplateviewport -->
+        <meta name="viewport" content="width=device-width,initial-scale=1, maximum-scale=1">
+
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/gumby.css" />
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/style.css" />
+        <link rel="stylesheet" type="text/css" href="http://jungledroid.gitcafe.io/theme/pygment.css" />
+
+        <script src="http://jungledroid.gitcafe.io/theme/js/libs/modernizr-2.6.2.min.js"></script>
+
+
+
+
+</head>
+
+<body id="index" class="home">
+
+
+    <div class="container">
+
+        <div class="row">
+
+          <header id="banner" class="body">
+                  <h1><a href="http://jungledroid.gitcafe.io/">Jungledroid <strong></strong></a></h1>
+          </header><!-- /#banner -->
+
+            <div id="navigation" class="navbar row">
+              <a href="#" gumby-trigger="#navigation &gt; ul" class="toggle"><i class="icon-menu"></i></a>
+             
+              <ul class="columns">
+                <li><a href="http://jungledroid.gitcafe.io/">Home</a></li>
+
+                <li><a href="http://jungledroid.gitcafe.io/pages/guan-yu.html">关于</a></li>
+
+              </ul>
+            </div>
+
+<section id="content" class="body">
+
+   <div class="row">
+        <div class="eleven columns">
+
+
+            <header>
+              <h2 class="entry-title">
+                <a href="http://jungledroid.gitcafe.io/sqlite3-test.html" rel="bookmark"
+                   title="Permalink to Android Sqlite3 数据库调试">Android Sqlite3 数据库调试</a></h2>
+           
+            </header>
+            <footer class="post-info">
+              <abbr class="published" title="2015-09-17T23:00:00+08:00">
+                2015-09-17 23:00:00
+              </abbr>
+              <address class="vcard author">By 
+                <a class="url fn" href="http://jungledroid.gitcafe.io/author/joe-zhang.html"> Joe Zhang</a>
+              </address>
+            </footer><!-- /.post-info -->
+            <div class="entry-content">
+              <h3>前言</h3>
+<p>最近做一个项目，数据逻辑比较复杂， 我建了一些表，然后写了些接口给同事调用， 关于数据逻辑在提供的接口里完成， 实现过程中需要解决这样的问题：</p>
+<ol>
+<li>需要很多情形的数据，数据本身存在逻辑关系。</li>
+<li>Android中没有数据输入， 可以将数据库导入电脑直接操作，由于数据要做些换算，调试一次要换算很久。</li>
+</ol>
+<h3>解决方式</h3>
+<p>1.启用sqlite3日志，老老实实在程序中根据sqlite的日志，调试和生成数据，命令如下：  </p>
+<div class="highlight"><pre> adb shell setprop log.tag.SQLiteLog V   
+ adb shell setprop log.tag.SQLiteStatements V   
+ adb shell stop   
+ adb shell start
+</pre></div>
+
+
+<p>关闭日志只需要把V改成"",就可以了。 （V 表示 VERBOSE，源码中只检查首字符，所以这里可以是Vxxx）。</p>
+<p>另外，如果有root权限想用adb shell直接操作数据库，请<a href="http://blog.csdn.net/myairen1365/article/details/21026767">参考这里</a></p>
+<p>2.可以通过脚本实现，python支持sqlite3，考虑到这里生成的数据需要根据一些条件进行运算和推算，用python脚本的方式比较方便。</p>
+<p>adb pull导入db，然后写好python脚本。python有库直接支持sqlite3,使用起来很简单，下面是个示例:</p>
+<div class="highlight"><pre><span class="kn">import</span> <span class="nn">sqlite3</span>
+<span class="n">con</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s">&quot;C:/Users/dell/Desktop/db/sh-db&quot;</span><span class="p">)</span>
+<span class="n">cur</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+<span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;SELECT * FROM CY&#39;</span><span class="p">)</span>
+<span class="k">print</span> <span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">())</span>
+<span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&#39;delete from CY&#39;</span><span class="p">)</span>
+<span class="n">con</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+
+
+<p>然后需要做得就是写好数据逻辑和日志：</p>
+<div class="highlight"><pre>def generateDatetimeBefore(start,endDelta,cyLength):
+    endDatetime = start - timedelta(days = endDelta)
+    startDatetime =  endDatetime - timedelta(days = cyLength - 1)
+    startMsg = millionsPattern%(realDateTimeStr(startDatetime),dateToMillions(startDatetime))
+    endMsg = millionsPattern%(realDateTimeStr(endDatetime),dateToMillions(endDatetime))
+    print(&quot;| %s | %s | %s | %d | %d |&quot;%(startMsg, endMsg, membershipId, cyLength, peLength))
+    data = [dateToMillions(startDatetime), dateToMillions(endDatetime), id,cyLength,peLength]
+    cur.execute(insertSql,data)
+    con.commit()
+    return startDatetime
+</pre></div>
+
+
+<p>我这里把日志打成markdown格式，方便观察和分析：</p>
+<div class="highlight"><pre>lastCycleStart = dateToday + timedelta(days = 1);
+lastCycleEnd = lastCyStart + timedelta(days=cyleLength-1)
+print(&quot;cyle dateToday:&quot;)
+print(&quot; &quot;,dateToday.strftime(&quot;%Y-%m-%d&quot;))
+print(&quot;============================&quot;)
+print(&quot;| xxx | xxx | xx | xxxx | xxxx|&quot;)
+print(&quot;|-----------|---------|----------|--------------|-------------|&quot;)
+generateCurrentPredict(lastCyStart)
+
+start = generateDatetimeBefore(lastCyStart,1,cyLength)
+start = generateDatetimeBefore(start,1,cyLength)
+start = generateDatetimeBefore(start,1,cyLength)
+start = generateDatetimeBefore(start,1,cyLength)
+
+
+print (cur.fetchall())
+con.close()
+</pre></div>
+
+
+<p>这样根据特定逻辑生成了我想要的数据，下一步使用adb push 推入虚拟机就可以进行验证。
+  文章很简单，紧紧是一个思路，对于比较直观的数据直接使用方式一，然后通过Root Explore查看数据即可。用脚本语言来实现，往往可以节约大量的时间，而且准确率也会有所提高。</p>
+            </div><!-- /.entry-content -->
+            <div class="comments">
+              <h3>Comments</h3>
+             <!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="sqlite3-test" data-title="Android Sqlite3 数据库调试" data-url="http://jungledroid.gitcafe.io/sqlite3-test.html"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+var duoshuoQuery = {short_name:"jungle"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+<!-- 多说公共JS代码 end -->
+
+            </div>
+
+
+        </div><!-- /.eleven.columns -->
+
+<div class="three columns">
+
+<h4>Pages</h4>
+
+ <ul>
+      <li><a href="http://jungledroid.gitcafe.io/pages/guan-yu.html">关于</a></li>
+  </ul>
+
+<h4>Categories</h4>
+<ul class="blank">
+		<li><a href="http://jungledroid.gitcafe.io/category/android.html">Android</a></li>
+</ul>
+
+
+<h4>Tags</h4>
+	<ul class="blank">
+</ul>
+
+
+<nav class="widget">
+  <h4>Social</h4>
+  <ul class="blank">
+    <li><a href="https://github.com/jungledroid">Github</a></li>
+    <li><a href="http://weibo.com/u/5741921914">新浪微博</a></li>
+  </ul>
+</nav>
+
+</div> </div><!-- /.row -->
+
+
+</section>
+
+       </div><!-- /.row -->
+    </div><!-- /.container -->
+
+
+       <div class="container.nopad bg">
+
+    
+        <footer id="credits" class="row">
+          <div class="seven columns left-center">
+
+                   <address id="about" class="vcard body">
+                    Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+                    which takes great advantage of <a href="http://python.org">Python</a>.
+                    <br />
+                    Based on the <a target="_blank" href="http://gumbyframework.com">Gumby Framework</a>
+                    </address>
+          </div>
+
+
+          <div class="seven columns">
+            <div class="row">
+              <ul class="socbtns">
+
+
+
+
+
+              </ul>
+            </div>
+          </div>
+        </footer>
+
+    </div>
+
+
+  <script src="http://jungledroid.gitcafe.io/theme/js/libs/jquery-1.9.1.min.js"></script>
+  <script src="http://jungledroid.gitcafe.io/theme/js/libs/gumby.min.js"></script>
+  <script src="http://jungledroid.gitcafe.io/theme/js/plugins.js"></script>
+</body>
+</html>
